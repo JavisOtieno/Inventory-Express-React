@@ -14,6 +14,8 @@ app.use(bodyParser.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/suppliers', require('./routes/supplierRoutes'))
+app.use('/api/customers', require('./routes/customerRoutes'))
 
 // Sync database (for dev; in production, use migrations)
 sequelize.sync()
