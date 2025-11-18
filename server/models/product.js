@@ -20,5 +20,13 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: true,           // gives you createdAt & updatedAt
   })
 
+  Product.associate = (models) => {
+  Product.hasMany(models.Purchase, { foreignKey: 'productId' });
+};
+
+  Product.associate = (models) => {
+  Product.hasMany(models.Sale, { foreignKey: 'productId' });
+};
+
   return Product
 }
