@@ -4,6 +4,7 @@ const { User } = require('./models');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const authRoutes = require('./routes/auth.js');
+const productRoutes = require('./routes/productRoutes.js');
 
 
 const app = express();
@@ -12,6 +13,7 @@ app.use(bodyParser.json());
 
 
 app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
 
 // Sync database (for dev; in production, use migrations)
 sequelize.sync()

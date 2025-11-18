@@ -23,7 +23,7 @@ export default function AppSidebar() {
 
   const menu = [
     { name: 'Dashboard',   path: '/',          icon: HiChartPie },
-    { name: 'Inventory',   path: '/inventory', icon: HiShoppingBag },
+    { name: 'Products',   path: '/inventory', icon: HiShoppingBag },
     { name: 'Suppliers',   path: '/suppliers', icon: HiTruck },
     { name: 'Customers',   path: '/customers', icon: HiUserGroup },
     { name: 'Purchases',   path: '/purchases', icon: HiShoppingCart },
