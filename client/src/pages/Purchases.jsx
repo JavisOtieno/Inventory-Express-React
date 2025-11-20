@@ -51,6 +51,7 @@ export default function Purchases() {
 
   const fetchProducts = async () => {
     try {
+      //test
       const res = await axios.get('/api/products', { headers: { Authorization: `Bearer ${token}` } })
       setProducts(res.data)
     } catch (err) {
