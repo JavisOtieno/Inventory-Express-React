@@ -24,7 +24,7 @@ export default function Customers() {
   const [openModal, setOpenModal] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState(null)
   const [formData, setFormData] = useState({ name: '', phone: '' })
-  const API_URL = 'http://localhost:5000/api/customers'
+  const API_URL = '/api/customers'
   const token = localStorage.getItem('token')
 
   // Fetch customers

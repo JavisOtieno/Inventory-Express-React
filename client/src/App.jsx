@@ -31,9 +31,9 @@ export default function App() {
       {/* Protected Routes – All use DashboardLayout (Sidebar + Topbar) */}
       <Route
         element={
-          <ProtectedRoute>
+        ///  <ProtectedRoute>
             <DashboardLayout />
-          </ProtectedRoute>
+         // </ProtectedRoute>
         }
       >
         <Route path="/" element={<Dashboard />} />

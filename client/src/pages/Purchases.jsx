@@ -26,7 +26,7 @@ export default function Purchases() {
   const [openModal, setOpenModal] = useState(false)
   const [editingPurchase, setEditingPurchase] = useState(null)
   const [formData, setFormData] = useState({ supplierId: '', productId: '', quantity: '' })
-  const API_URL = 'http://localhost:5000/api/purchases'
+  const API_URL = '/api/purchases'
   const token = localStorage.getItem('token')
 
   const fetchPurchases = async () => {
@@ -41,7 +41,7 @@ export default function Purchases() {
 
   const fetchSuppliers = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/suppliers', { headers: { Authorization: `Bearer ${token}` } })
+      const res = await axios.get('/api/suppliers', { headers: { Authorization: `Bearer ${token}` } })
       setSuppliers(res.data)
     } catch (err) {
       console.error(err)
@@ -161,7 +161,7 @@ export default function Purchases() {
                     <TableCell>{purchase.Product.name}</TableCell>
                     <TableCell>{purchase.quantity}</TableCell>
                     <TableCell className="text-right space-x-2">
-                      <Button size="xs" onClick={() => openModalHandler(purchase)}>
+                      <Button size="xs" color="failure" onClick={() => openModalHandler(purchase)}>
                         <HiPencil className="h-4 w-4" />
                       </Button>
                       <Button size="xs" color="failure" onClick={() => handleDelete(purchase.id)}>

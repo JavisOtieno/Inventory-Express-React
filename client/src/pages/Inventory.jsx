@@ -25,7 +25,7 @@ export default function Inventory() {
   const [openModal, setOpenModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const [formData, setFormData] = useState({ name: '', quantity: '' })
-  const API_URL = 'http://localhost:5000/api/products'
+  const API_URL = '/api/products'
   const token = localStorage.getItem('token')
   // Fetch products
   const fetchProducts = async () => {

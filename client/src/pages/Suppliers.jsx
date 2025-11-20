@@ -24,7 +24,7 @@ export default function Suppliers() {
   const [openModal, setOpenModal] = useState(false)
   const [editingSupplier, setEditingSupplier] = useState(null)
   const [formData, setFormData] = useState({ name: '', phone: '' })
-  const API_URL = 'http://localhost:5000/api/suppliers'
+  const API_URL = '/api/suppliers'
   const token = localStorage.getItem('token')
 
   // Fetch suppliers

@@ -41,7 +41,7 @@ export default function Sales() {
 
   const fetchCustomers = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/customers', { headers: { Authorization: `Bearer ${token}` } })
+      const res = await axios.get('/api/customers', { headers: { Authorization: `Bearer ${token}` } })
       setCustomers(res.data)
     } catch (err) {
       console.error(err)
@@ -161,7 +161,7 @@ export default function Sales() {
                     <TableCell>{sale.Product.name}</TableCell>
                     <TableCell>{sale.quantity}</TableCell>
                     <TableCell className="text-right space-x-2">
-                      <Button size="xs" onClick={() => openModalHandler(sale)}>
+                      <Button size="xs" color="failure" onClick={() => openModalHandler(sale)}>
                         <HiPencil className="h-4 w-4" />
                       </Button>
                       <Button size="xs" color="failure" onClick={() => handleDelete(sale.id)}>

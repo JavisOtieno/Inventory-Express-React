@@ -29,7 +29,7 @@ router.post('/', auth, async (req, res) => {
     
     const product = await Product.findByPk(productId)
     if (!product) return res.status(404).json({ message: 'Product not found' })
-    product.quantity += parseInt(quantity)
+    product.quantity -= parseInt(quantity)
     await product.save()
     
     const detailedSale = await Sale.findByPk(sale.id, {
