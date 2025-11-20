@@ -26,7 +26,7 @@ export default function Sales() {
   const [openModal, setOpenModal] = useState(false)
   const [editingSale, setEditingSale] = useState(null)
   const [formData, setFormData] = useState({ customerId: '', productId: '', quantity: '' })
-  const API_URL = 'http://localhost:5000/api/sales'
+  const API_URL = '/api/sales'
   const token = localStorage.getItem('token')
 
   const fetchSales = async () => {
