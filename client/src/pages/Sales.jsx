@@ -51,7 +51,7 @@ export default function Sales() {
 
   const fetchProducts = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/products', { headers: { Authorization: `Bearer ${token}` } })
+      const res = await axios.get('/api/products', { headers: { Authorization: `Bearer ${token}` } })
       setProducts(res.data)
     } catch (err) {
       console.error(err)
