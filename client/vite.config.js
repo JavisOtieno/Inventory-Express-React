@@ -16,8 +16,11 @@ export default ({ mode }) => {
       },
       proxy: {
         '/api': {
-          target: env.VITE_API_BASE,
+          target: 'http://37.27.82.6:5000',  // <-- backend on port 5000
           changeOrigin: true,
+          secure: false,
+          // Only use this if your backend routes do NOT start with /api
+          // rewrite: (path) => path.replace(/^\/api/, ''),
         },
       },
     },

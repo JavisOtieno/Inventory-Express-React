@@ -26,7 +26,7 @@ export default function Sales() {
   const [openModal, setOpenModal] = useState(false)
   const [editingSale, setEditingSale] = useState(null)
   const [formData, setFormData] = useState({ customerId: '', productId: '', quantity: '' })
-  const API_URL = 'http://37.27.82.6:5000/api/sales'
+  const API_URL = '/api/sales'
   const token = localStorage.getItem('token')
 
   const fetchSales = async () => {
@@ -41,7 +41,7 @@ export default function Sales() {
 
   const fetchCustomers = async () => {
     try {
-      const res = await axios.get('http://37.27.82.6:5000/api/customers', { headers: { Authorization: `Bearer ${token}` } })
+      const res = await axios.get('/api/customers', { headers: { Authorization: `Bearer ${token}` } })
       setCustomers(res.data)
     } catch (err) {
       console.error(err)
