@@ -4,6 +4,8 @@ import { useAtom } from 'jotai'
 import { userAtom } from '../atoms'
 import { useNavigate } from 'react-router-dom'
 import { HiCube, HiUsers, HiShoppingCart, HiCurrencyDollar } from 'react-icons/hi'
+import TopNavbar from '../components/TopNavbar' // Import the new component
+
 
 export default function Dashboard() {
   const [user, setUser] = useAtom(userAtom)
@@ -23,16 +25,12 @@ export default function Dashboard() {
   ]
 
   return (
-    <>
+      <div className="min-h-screen bg-gray-50">
+          
+          {/* Use the new component */}
+          <TopNavbar />
       {/* Top bar with user name and logout - visible on all screens */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center sticky top-0 z-30">
-        <h1 className="text-2xl font-bold text-gray-800">
-          Welcome back, {user?.name || 'User'}!
-        </h1>
-        <Button color="failure" size="sm" onClick={logout}>
-          Logout
-        </Button>
-      </div>
+
 
       {/* Main dashboard content */}
       <div className="p-6 lg:p-10">
@@ -62,6 +60,6 @@ export default function Dashboard() {
           </p>
         </Card>
       </div>
-    </>
+    </div>
   )
 }

@@ -13,11 +13,32 @@ import Sales from './pages/Sales'             // create later
 import DashboardLayout from './layouts/DashboardLayout'
 import { useAtom } from 'jotai'
 import { userAtom } from './atoms'
+import { useEffect } from 'react' // Import useEffect
 
 // Protected Route Component
+// function ProtectedRoute({ children }) {
+//   const [user] = useAtom(userAtom)
+//   return user ? children : <Navigate to="/login" replace />
+// }
+// --- MODIFIED PROTECTED ROUTE ---
 function ProtectedRoute({ children }) {
-  const [user] = useAtom(userAtom)
-  return user ? children : <Navigate to="/login" replace />
+  const [user, setUser] = useAtom(userAtom)
+
+  // 1. Recover state on reload
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user')
+    // If atom is empty but storage has data, restore the atom
+    if (!user && storedUser) {
+      setUser(JSON.parse(storedUser))
+    }
+  }, [user, setUser])
+
+  // 2. Authentication Check
+  // We check if the Atom exists OR if the token exists in storage.
+  // This prevents the redirect while the atom is being restored.
+  const isAuthenticated = user || localStorage.getItem('token')
+
+  return isAuthenticated ? children : <Navigate to="/login" replace />
 }
 
 // Main App
@@ -31,9 +52,9 @@ export default function App() {
       {/* Protected Routes – All use DashboardLayout (Sidebar + Topbar) */}
       <Route
         element={
-        ///  <ProtectedRoute>
+        <ProtectedRoute>
             <DashboardLayout />
-         // </ProtectedRoute>
+          </ProtectedRoute>
         }
       >
         <Route path="/" element={<Dashboard />} />

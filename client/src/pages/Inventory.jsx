@@ -18,6 +18,8 @@ import {
 } from 'flowbite-react'
 import { HiPlus, HiPencil, HiTrash } from 'react-icons/hi'
 import axios from 'axios'
+import TopNavbar from '../components/TopNavbar' // Import the new component
+
 
 export default function Inventory() {
   const [products, setProducts] = useState([])
@@ -91,6 +93,10 @@ export default function Inventory() {
     return <Badge color="success">{qty}</Badge>
   }
   return (
+       <div className="min-h-screen bg-gray-50">
+           
+           {/* Use the new component */}
+           <TopNavbar />
     <div className="p-6 lg:p-10">
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
@@ -191,6 +197,7 @@ export default function Inventory() {
           </form>
         </ModalBody>
       </Modal>
+    </div>
     </div>
   )
 }

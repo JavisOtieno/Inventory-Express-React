@@ -17,6 +17,8 @@ import {
 } from 'flowbite-react'
 import { HiPlus, HiPencil, HiTrash } from 'react-icons/hi'
 import axios from 'axios'
+import TopNavbar from '../components/TopNavbar' // Import the new component
+
 
 export default function Purchases() {
   const [purchases, setPurchases] = useState([])
@@ -114,6 +116,10 @@ export default function Purchases() {
   }
 
   return (
+           <div className="min-h-screen bg-gray-50">
+               
+               {/* Use the new component */}
+               <TopNavbar />
     <div className="p-6 lg:p-10">
       <div className="flex justify-between items-center mb-8">
         <div>
@@ -242,6 +248,7 @@ export default function Purchases() {
           </form>
         </ModalBody>
       </Modal>
+    </div>
     </div>
   )
 }
