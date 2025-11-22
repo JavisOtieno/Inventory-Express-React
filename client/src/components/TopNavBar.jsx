@@ -3,6 +3,7 @@ import { Avatar, Dropdown } from 'flowbite-react'
 import { HiLogout, HiCog } from 'react-icons/hi'
 
 export default function TopNavbar() {
+  //test
   // Logic: Get user and handle logout internally
   const user = JSON.parse(localStorage.getItem('user')) || { name: 'Sales Agent', email: 'agent@company.com' }
 
