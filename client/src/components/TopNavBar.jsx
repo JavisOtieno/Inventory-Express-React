@@ -83,15 +83,7 @@ export default function TopNavbar() {
             <HiCog className="h-4 w-4" />
             Settings
           </button>
-          <button 
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-            
-              onClick={() => navigate('/settings')
-            }
-          >
-            <HiCog className="h-4 w-4" />
-            Button 2
-          </button>
+          
           
 
           {/* Divider */}
