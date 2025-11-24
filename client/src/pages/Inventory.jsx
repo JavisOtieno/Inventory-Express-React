@@ -18,7 +18,7 @@ import {
 } from 'flowbite-react'
 import { HiPlus, HiPencil, HiTrash } from 'react-icons/hi'
 import axios from 'axios'
-import TopNavbar from '../components/TopNavbar' // Import the new component
+import TopNavbar from '../components/TopNavBar' // Import the new component
 
 
 export default function Inventory() {
