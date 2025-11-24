@@ -103,7 +103,7 @@ export default function Settings() {
             </div>
 
               {/* Role Field */}
-              <div>
+              {/* <div>
                 <div className="mb-2 block">
                   <Label htmlFor="role" value="Role" />
                 </div>
@@ -113,7 +113,7 @@ export default function Settings() {
                   disabled // Role is managed by admin
                   className="capitalize"
                 />
-              </div>
+              </div> */}
 
               {/* <div className="pt-4">
                 <Button type="submit" color="purple">
