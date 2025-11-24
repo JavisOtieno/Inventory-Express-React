@@ -85,18 +85,22 @@ export default function Settings() {
               </div>
 
               {/* Email Field */}
-              <div>
-                <div className="mb-2 block">
-                  <Label htmlFor="email" value="Email Address" />
-                </div>
-                <TextInput 
-                  id="email" 
-                  type="email" 
-                  value={formData.email}
-                  disabled // usually emails are not editable directly
-                  helperText="Contact admin to change email"
-                />
-              </div>
+            {/* Email Field - FIXED */}
+            <div>
+            <div className="mb-2 block">
+                <Label htmlFor="email" value="Email Address" />
+            </div>
+            <TextInput 
+                id="email" 
+                type="email" 
+                value={formData.email}
+                disabled 
+            />
+            {/* Standard HTML helper text to avoid React warnings */}
+            <p className="mt-1 text-sm text-gray-500">
+                Contact admin to change email
+            </p>
+            </div>
 
               {/* Role Field */}
               <div>

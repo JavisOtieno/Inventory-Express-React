@@ -3,10 +3,12 @@ import { Avatar, Dropdown } from 'flowbite-react'
 import { HiLogout, HiCog } from 'react-icons/hi'
 import { useAtom } from 'jotai'
 import { userAtom } from '../atoms'
+import { useNavigate } from 'react-router-dom'
 
 export default function TopNavbar() {
   // 1. Get the global user state
   const [user, setUser] = useAtom(userAtom)
+  const navigate = useNavigate() // <--- Add this
 
   // 2. Fallback: If atom is empty (rare), try localStorage or default to Guest
   const currentUser = user || JSON.parse(localStorage.getItem('user')) || { 

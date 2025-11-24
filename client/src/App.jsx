@@ -9,6 +9,7 @@ import Suppliers from './pages/Suppliers'     // create later
 import Customers from './pages/Customers'     // create later
 import Purchases from './pages/Purchases'     // create later
 import Sales from './pages/Sales'             // create later
+import Settings from './pages/Settings' 
 
 import DashboardLayout from './layouts/DashboardLayout'
 import { useAtom } from 'jotai'
