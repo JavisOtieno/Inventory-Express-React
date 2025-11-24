@@ -64,6 +64,7 @@ export default function App() {
         <Route path="/customers" element={<Customers />} />
         <Route path="/purchases" element={<Purchases />} />
         <Route path="/sales" element={<Sales />} /> 
+        <Route path="/settings" element={<Settings />} />
         
 
         {/* Optional: 404 inside dashboard */}
