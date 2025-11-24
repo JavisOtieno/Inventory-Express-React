@@ -115,11 +115,11 @@ export default function Settings() {
                 />
               </div>
 
-              <div className="pt-4">
+              {/* <div className="pt-4">
                 <Button type="submit" color="purple">
                   Save Changes
                 </Button>
-              </div>
+              </div> */}
             </form>
           </Card>
         </div>
