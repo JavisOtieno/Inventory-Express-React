@@ -54,11 +54,11 @@ export default function Settings() {
               />
               <h5 className="mb-1 text-xl font-medium text-gray-900">{formData.name}</h5>
               <span className="text-sm text-gray-500 capitalize">{formData.role}</span>
-              <div className="mt-4 flex space-x-3 lg:mt-6">
+              {/* <div className="mt-4 flex space-x-3 lg:mt-6">
                  <span className="inline-flex items-center rounded-md bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
                    Active Status
                  </span>
-              </div>
+              </div> */}
             </div>
           </Card>
         </div>
