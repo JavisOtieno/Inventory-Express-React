@@ -5,7 +5,7 @@ import { useAtom } from 'jotai'
 import { userAtom } from '../atoms'
 import { useNavigate } from 'react-router-dom'
 import { HiCube, HiUsers, HiShoppingCart, HiCurrencyDollar } from 'react-icons/hi'
-import TopNavbar from '../components/TopNavbar' 
+import TopNavbar from '../components/TopNavBar' 
 import axios from 'axios'
 
 export default function Dashboard() {
