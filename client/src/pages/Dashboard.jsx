@@ -20,13 +20,14 @@ export default function Dashboard() {
     totalSales: 0
   })
   const [loading, setLoading] = useState(true)
+  const API_BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:5000'
 
   // Fetch Logic
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem('token')
-        const res = await axios.get('/api/dashboard', {
+        const res = await axios.get(`${API_BASE_URL}/api/dashboard`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         setStatsData(res.data)
