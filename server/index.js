@@ -5,8 +5,6 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const authRoutes = require('./routes/auth.js');
 const productRoutes = require('./routes/productRoutes.js');
-const dashboardRoutes = require('./routes/dashboardRoutes.js')
-
 
 const app = express();
 app.use(cors());
@@ -19,7 +17,7 @@ app.use('/api/suppliers', require('./routes/supplierRoutes'))
 app.use('/api/customers', require('./routes/customerRoutes'))
 app.use('/api/purchases', require('./routes/purchaseRoutes'))
 app.use('/api/sales', require('./routes/saleRoutes'))
-app.use('/api/dashboard', dashboardRoutes)
+app.use('/api/dashboard',  require('./routes/dashboardRoutes'))
 
 // Sync database (for dev; in production, use migrations)
 sequelize.sync()
