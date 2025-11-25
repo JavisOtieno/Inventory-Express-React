@@ -17,7 +17,7 @@ app.use('/api/suppliers', require('./routes/supplierRoutes'))
 app.use('/api/customers', require('./routes/customerRoutes'))
 app.use('/api/purchases', require('./routes/purchaseRoutes'))
 app.use('/api/sales', require('./routes/saleRoutes'))
-app.use('/api/dashboard',  require('./routes/dashboardRoutes'))
+app.use('/api/dashboard',  require('./routes/saleRoutes'))
 
 // Sync database (for dev; in production, use migrations)
 sequelize.sync()
