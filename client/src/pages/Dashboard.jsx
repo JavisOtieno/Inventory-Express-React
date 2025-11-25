@@ -1,56 +1,104 @@
 // src/pages/Dashboard.jsx
-import { Button, Card } from 'flowbite-react'
+import { useEffect, useState } from 'react'
+import { Card, Spinner } from 'flowbite-react'
 import { useAtom } from 'jotai'
 import { userAtom } from '../atoms'
 import { useNavigate } from 'react-router-dom'
 import { HiCube, HiUsers, HiShoppingCart, HiCurrencyDollar } from 'react-icons/hi'
-import TopNavbar from '../components/TopNavBar' // Import the new component
-
+import TopNavbar from '../components/TopNavbar' 
+import axios from 'axios'
 
 export default function Dashboard() {
   const [user, setUser] = useAtom(userAtom)
   const navigate = useNavigate()
+  
+  // State for dashboard data
+  const [statsData, setStatsData] = useState({
+    totalProducts: 0,
+    totalCustomers: 0,
+    totalPurchases: 0,
+    totalSales: 0
+  })
+  const [loading, setLoading] = useState(true)
 
-  const logout = () => {
-    localStorage.removeItem('token')
-    setUser(null)
-    navigate('/login')
-  }
+  // Fetch Logic
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await axios.get('/api/dashboard', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        setStatsData(res.data)
+      } catch (err) {
+        console.error('Failed to load dashboard stats', err)
+      } finally {
+        setLoading(false)
+      }
+    }
 
+    fetchStats()
+  }, [])
+
+  // Prepare the display array using the fetched data
   const stats = [
-    { title: 'Total Products', value: '1,234', icon: HiCube, color: 'purple' },
-    { title: 'Total Customers', value: '89', icon: HiUsers, color: 'blue' },
-    { title: 'Total Purchases', value: '456', icon: HiShoppingCart, color: 'green' },
-    { title: 'Total Sales', value: '$45,678', icon: HiCurrencyDollar, color: 'pink' },
+    { 
+      title: 'Total Products', 
+      value: statsData.totalProducts.toLocaleString(), // Adds commas (e.g. 1,234)
+      icon: HiCube, 
+      color: 'purple' 
+    },
+    { 
+      title: 'Total Customers', 
+      value: statsData.totalCustomers.toLocaleString(), 
+      icon: HiUsers, 
+      color: 'blue' 
+    },
+    { 
+      title: 'Total Purchases', 
+      value: statsData.totalPurchases.toLocaleString(), 
+      icon: HiShoppingCart, 
+      color: 'green' 
+    },
+    { 
+      title: 'Total Sales', 
+      value: statsData.totalSales.toLocaleString(), // Or format as currency if backend sends revenue
+      icon: HiCurrencyDollar, 
+      color: 'pink' 
+    },
   ]
 
   return (
-      <div className="min-h-screen bg-gray-50">
-          
-          {/* Use the new component */}
-          <TopNavbar />
-      {/* Top bar with user name and logout - visible on all screens */}
+    <div className="min-h-screen bg-gray-50">
+      
+      {/* Navbar */}
+      <TopNavbar />
 
-
-      {/* Main dashboard content */}
+      {/* Main Content */}
       <div className="p-6 lg:p-10">
         <h2 className="text-3xl font-bold text-gray-800 mb-8">Dashboard Overview</h2>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          {stats.map((stat) => {
-            const Icon = stat.icon
-            return (
-              <Card key={stat.title} className="text-center hover:shadow-xl transition-shadow">
-                <div className={`inline-flex p-3 rounded-lg bg-${stat.color}-100 text-${stat.color}-600 mb-4`}>
-                  <Icon className="w-8 h-8" />
-                </div>
-                <h3 className="text-3xl font-bold text-gray-800">{stat.value}</h3>
-                <p className="text-gray-600 mt-2">{stat.title}</p>
-              </Card>
-            )
-          })}
-        </div>
+        {loading ? (
+           <div className="flex justify-center py-20">
+             <Spinner size="xl" color="purple" />
+           </div>
+        ) : (
+          /* Stats Grid */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            {stats.map((stat) => {
+              const Icon = stat.icon
+              return (
+                <Card key={stat.title} className="text-center hover:shadow-xl transition-shadow">
+                  <div className={`inline-flex p-3 rounded-lg bg-${stat.color}-100 text-${stat.color}-600 mb-4 mx-auto`}>
+                    <Icon className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-3xl font-bold text-gray-800">{stat.value}</h3>
+                  <p className="text-gray-600 mt-2">{stat.title}</p>
+                </Card>
+              )
+            })}
+          </div>
+        )}
 
         {/* Welcome message card */}
         <Card className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
