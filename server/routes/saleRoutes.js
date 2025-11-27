@@ -29,6 +29,14 @@ router.post('/', auth, async (req, res) => {
     
     const product = await Product.findByPk(productId)
     if (!product) return res.status(404).json({ message: 'Product not found' })
+
+    // === ADD THIS BLOCK ===
+    if (product.quantity < parseInt(quantity)) {
+      return res.status(400).json({ 
+        message: `Insufficient stock. Available: ${product.quantity}, Requested: ${quantity}` 
+      })
+    }
+    // ======================
     product.quantity -= parseInt(quantity)
     await product.save()
     
@@ -62,6 +70,16 @@ router.put('/:id', auth, async (req, res) => {
       const diff = newQuantity - oldQuantity
       const product = await Product.findByPk(newProductId)
       if (!product) return res.status(404).json({ message: 'Product not found' })
+      
+      // === ADD THIS BLOCK ===
+      // If diff is positive, we are taking MORE stock. Check if we have enough.
+      if (diff > 0 && product.quantity < diff) {
+        return res.status(400).json({ 
+            message: `Insufficient stock for update. Available: ${product.quantity}, Needed: ${diff}` 
+        })
+      }
+      // ======================
+      
       product.quantity -= diff
       await product.save()
     } else {
