@@ -1,7 +1,6 @@
-// server/routes/purchaseRoutes.js
 const express = require('express')
 const router = express.Router()
-const { Purchase, Supplier, Product } = require('../models')
+const { Purchase, Supplier, Product, ProductSupplier, sequelize } = require('../models')
 const auth = require('../routes/auth')
 
 // GET all
@@ -12,7 +11,7 @@ router.get('/', auth, async (req, res) => {
         { model: Supplier, attributes: ['name'] },
         { model: Product, attributes: ['name'] }
       ],
-      order: [['id', 'DESC']]
+      order: [['createdAt', 'DESC']]
     })
     res.json(purchases)
   } catch (err) {
@@ -22,86 +21,158 @@ router.get('/', auth, async (req, res) => {
 
 // CREATE
 router.post('/', auth, async (req, res) => {
+  const t = await sequelize.transaction()
+
   try {
     const { supplierId, productId, quantity } = req.body
-    if (!supplierId || !productId || !quantity) return res.status(400).json({ message: 'Supplier ID, Product ID, and quantity required' })
-    const purchase = await Purchase.create({ supplierId, productId, quantity })
     
-    const product = await Product.findByPk(productId)
-    if (!product) return res.status(404).json({ message: 'Product not found' })
+    // 1. Create the Purchase Record
+    const purchase = await Purchase.create(
+        { supplierId, productId, quantity }, 
+        { transaction: t }
+    )
+
+    // 2. Upsert ProductSupplier (Inventory Batch)
+    const productSupplier = await ProductSupplier.findOne({
+      where: { productId, supplierId },
+      transaction: t
+    })
+
+    if (productSupplier) {
+      productSupplier.quantity += parseInt(quantity)
+      await productSupplier.save({ transaction: t })
+    } else {
+      await ProductSupplier.create({
+        productId,
+        supplierId,
+        quantity
+      }, { transaction: t })
+    }
+
+    // 3. Update Global Product Count
+    const product = await Product.findByPk(productId, { transaction: t })
     product.quantity += parseInt(quantity)
-    await product.save()
-    
+    await product.save({ transaction: t })
+
+    await t.commit()
+
+    // Fetch for response
     const detailedPurchase = await Purchase.findByPk(purchase.id, {
-      include: [
-        { model: Supplier, attributes: ['name'] },
-        { model: Product, attributes: ['name'] }
-      ]
+      include: [{ model: Supplier }, { model: Product }]
     })
     res.status(201).json(detailedPurchase)
+
   } catch (err) {
+    await t.rollback()
     res.status(400).json({ message: err.message })
   }
 })
 
 // UPDATE
 router.put('/:id', auth, async (req, res) => {
+  const t = await sequelize.transaction()
+
   try {
-    const purchase = await Purchase.findByPk(req.params.id)
-    if (!purchase) return res.status(404).json({ message: 'Purchase not found' })
-    
-    const oldProductId = purchase.productId
-    const oldQuantity = purchase.quantity
-    
-    await purchase.update(req.body)
-    
-    const newProductId = purchase.productId
-    const newQuantity = purchase.quantity
-    
-    if (oldProductId === newProductId) {
-      const diff = newQuantity - oldQuantity
-      const product = await Product.findByPk(newProductId)
-      if (!product) return res.status(404).json({ message: 'Product not found' })
-      product.quantity += diff
-      await product.save()
-    } else {
-      const oldProduct = await Product.findByPk(oldProductId)
-      if (!oldProduct) return res.status(404).json({ message: 'Old product not found' })
-      oldProduct.quantity -= oldQuantity
-      await oldProduct.save()
-      
-      const newProduct = await Product.findByPk(newProductId)
-      if (!newProduct) return res.status(404).json({ message: 'New product not found' })
-      newProduct.quantity += newQuantity
-      await newProduct.save()
+    const purchase = await Purchase.findByPk(req.params.id, { transaction: t })
+    if (!purchase) {
+        await t.rollback()
+        return res.status(404).json({ message: 'Purchase not found' })
+    }
+
+    const { supplierId, productId, quantity } = req.body
+
+    // LOGIC: Revert the old purchase completely, then apply the new one.
+    // This handles changing suppliers, products, or quantities safely.
+
+    // 1. Revert Old Data
+    const oldPS = await ProductSupplier.findOne({
+      where: { productId: purchase.productId, supplierId: purchase.supplierId },
+      transaction: t
+    })
+    if (oldPS) {
+      oldPS.quantity -= purchase.quantity
+      await oldPS.save({ transaction: t })
     }
     
-    const detailedPurchase = await Purchase.findByPk(purchase.id, {
-      include: [
-        { model: Supplier, attributes: ['name'] },
-        { model: Product, attributes: ['name'] }
-      ]
+    const oldProduct = await Product.findByPk(purchase.productId, { transaction: t })
+    oldProduct.quantity -= purchase.quantity
+    await oldProduct.save({ transaction: t })
+
+    // 2. Apply New Data
+    let newPS = await ProductSupplier.findOne({
+      where: { productId, supplierId },
+      transaction: t
     })
-    res.json(detailedPurchase)
+
+    if (newPS) {
+      newPS.quantity += parseInt(quantity)
+      await newPS.save({ transaction: t })
+    } else {
+      await ProductSupplier.create({ productId, supplierId, quantity }, { transaction: t })
+    }
+
+    const newProduct = await Product.findByPk(productId, { transaction: t })
+    newProduct.quantity += parseInt(quantity)
+    await newProduct.save({ transaction: t })
+
+    // 3. Update the Purchase Record
+    await purchase.update({ supplierId, productId, quantity }, { transaction: t })
+
+    await t.commit()
+    
+    // Return updated record
+    const updated = await Purchase.findByPk(req.params.id, {
+        include: [{ model: Supplier }, { model: Product }]
+    })
+    res.json(updated)
+
   } catch (err) {
+    await t.rollback()
     res.status(400).json({ message: err.message })
   }
 })
 
 // DELETE
 router.delete('/:id', auth, async (req, res) => {
+  const t = await sequelize.transaction()
+
   try {
-    const purchase = await Purchase.findByPk(req.params.id)
-    if (!purchase) return res.status(404).json({ message: 'Purchase not found' })
+    const purchase = await Purchase.findByPk(req.params.id, { transaction: t })
+    if (!purchase) {
+        await t.rollback()
+        return res.status(404).json({ message: 'Purchase not found' })
+    }
+
+    // 1. Deduct from ProductSupplier
+    const ps = await ProductSupplier.findOne({
+      where: { productId: purchase.productId, supplierId: purchase.supplierId },
+      transaction: t
+    })
     
-    const product = await Product.findByPk(purchase.productId)
-    if (!product) return res.status(404).json({ message: 'Product not found' })
+    // Check if removing this purchase would make stock negative (optional safeguard)
+    if (ps && ps.quantity < purchase.quantity) {
+       await t.rollback()
+       return res.status(400).json({ message: 'Cannot delete: Stock has already been sold.' })
+    }
+
+    if (ps) {
+      ps.quantity -= purchase.quantity
+      await ps.save({ transaction: t })
+    }
+
+    // 2. Deduct from Global Product
+    const product = await Product.findByPk(purchase.productId, { transaction: t })
     product.quantity -= purchase.quantity
-    await product.save()
-    
-    await purchase.destroy()
+    await product.save({ transaction: t })
+
+    // 3. Delete Record
+    await purchase.destroy({ transaction: t })
+
+    await t.commit()
     res.json({ message: 'Purchase deleted' })
+
   } catch (err) {
+    await t.rollback()
     res.status(500).json({ message: err.message })
   }
 })

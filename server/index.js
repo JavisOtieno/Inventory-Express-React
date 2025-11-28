@@ -17,7 +17,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/customers', require('./routes/customerRoutes'))
 app.use('/api/purchases', require('./routes/purchaseRoutes'))
 app.use('/api/sales', require('./routes/saleRoutes'))
-app.use('/api/suppliers',  require('./routes/saleRoutes'))
+app.use('/api/suppliers',  require('./routes/supplierRoutes'))
 app.use('/api/dashboard',  require('./routes/dashboardRoutes'))
 
 // Sync database (for dev; in production, use migrations)

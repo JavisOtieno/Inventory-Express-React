@@ -3,6 +3,7 @@ const express = require('express')
 const router = express.Router()
 const { Product } = require('../models') // assuming you have Product model
 const auth = require('../routes/auth') // your JWT middleware
+const { ProductSupplier, Supplier, Sequelize } = require('../models');
 
 // GET all products
 router.get('/', auth, async (req, res) => {
@@ -13,6 +14,22 @@ router.get('/', auth, async (req, res) => {
     res.status(500).json({ message: err.message })
   }
 })
+
+// GET suppliers who have stock of a specific product
+router.get('/:id/suppliers', auth, async (req, res) => {
+  try {
+    const stock = await ProductSupplier.findAll({
+      where: { 
+        productId: req.params.id,
+        quantity: { [Sequelize.Op.gt]: 0 } // Only show suppliers who actually have items
+      },
+      include: [{ model: Supplier, attributes: ['name'] }]
+    });
+    res.json(stock);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // CREATE product
 router.post('/', auth, async (req, res) => {

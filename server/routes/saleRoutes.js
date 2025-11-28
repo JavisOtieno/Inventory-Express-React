@@ -1,7 +1,6 @@
-// server/routes/saleRoutes.js
 const express = require('express')
 const router = express.Router()
-const { Sale, Customer, Product } = require('../models')
+const { Sale, Customer, Product, Supplier, ProductSupplier, sequelize } = require('../models')
 const auth = require('../routes/auth')
 
 // GET all
@@ -10,9 +9,10 @@ router.get('/', auth, async (req, res) => {
     const sales = await Sale.findAll({
       include: [
         { model: Customer, attributes: ['name'] },
-        { model: Product, attributes: ['name'] }
+        { model: Product, attributes: ['name'] },
+        { model: Supplier, attributes: ['name'] } // Include Supplier info
       ],
-      order: [['id', 'DESC']]
+      order: [['createdAt', 'DESC']]
     })
     res.json(sales)
   } catch (err) {
@@ -22,104 +22,158 @@ router.get('/', auth, async (req, res) => {
 
 // CREATE
 router.post('/', auth, async (req, res) => {
-  try {
-    const { customerId, productId, quantity } = req.body
-    if (!customerId || !productId || !quantity) return res.status(400).json({ message: 'Customer ID, Product ID, and quantity required' })
-    const sale = await Sale.create({ customerId, productId, quantity })
-    
-    const product = await Product.findByPk(productId)
-    if (!product) return res.status(404).json({ message: 'Product not found' })
+  const t = await sequelize.transaction()
 
-    // === ADD THIS BLOCK ===
-    if (product.quantity < parseInt(quantity)) {
+  try {
+    const { customerId, productId, supplierId, quantity } = req.body
+
+    // 1. Check Specific Stock (Product + Supplier)
+    const ps = await ProductSupplier.findOne({
+      where: { productId, supplierId },
+      transaction: t
+    })
+
+    if (!ps || ps.quantity < parseInt(quantity)) {
+      await t.rollback()
       return res.status(400).json({ 
-        message: `Insufficient stock. Available: ${product.quantity}, Requested: ${quantity}` 
+        message: `Insufficient stock from this supplier. Available: ${ps ? ps.quantity : 0}` 
       })
     }
-    // ======================
+
+    // 2. Create Sale
+    const sale = await Sale.create(
+        { customerId, productId, supplierId, quantity },
+        { transaction: t }
+    )
+
+    // 3. Deduct from ProductSupplier
+    ps.quantity -= parseInt(quantity)
+    await ps.save({ transaction: t })
+
+    // 4. Deduct from Global Product
+    const product = await Product.findByPk(productId, { transaction: t })
     product.quantity -= parseInt(quantity)
-    await product.save()
-    
+    await product.save({ transaction: t })
+
+    await t.commit()
+
     const detailedSale = await Sale.findByPk(sale.id, {
       include: [
-        { model: Customer, attributes: ['name'] },
-        { model: Product, attributes: ['name'] }
+          { model: Customer }, 
+          { model: Product },
+          { model: Supplier }
       ]
     })
     res.status(201).json(detailedSale)
+
   } catch (err) {
+    await t.rollback()
     res.status(400).json({ message: err.message })
   }
 })
 
 // UPDATE
 router.put('/:id', auth, async (req, res) => {
+  const t = await sequelize.transaction()
+
   try {
-    const sale = await Sale.findByPk(req.params.id)
-    if (!sale) return res.status(404).json({ message: 'Sale not found' })
-    
-    const oldProductId = sale.productId
-    const oldQuantity = sale.quantity
-    
-    await sale.update(req.body)
-    
-    const newProductId = sale.productId
-    const newQuantity = sale.quantity
-    
-    if (oldProductId === newProductId) {
-      const diff = newQuantity - oldQuantity
-      const product = await Product.findByPk(newProductId)
-      if (!product) return res.status(404).json({ message: 'Product not found' })
-      
-      // === ADD THIS BLOCK ===
-      // If diff is positive, we are taking MORE stock. Check if we have enough.
-      if (diff > 0 && product.quantity < diff) {
-        return res.status(400).json({ 
-            message: `Insufficient stock for update. Available: ${product.quantity}, Needed: ${diff}` 
-        })
-      }
-      // ======================
-      
-      product.quantity -= diff
-      await product.save()
-    } else {
-      const oldProduct = await Product.findByPk(oldProductId)
-      if (!oldProduct) return res.status(404).json({ message: 'Old product not found' })
-      oldProduct.quantity += oldQuantity
-      await oldProduct.save()
-      
-      const newProduct = await Product.findByPk(newProductId)
-      if (!newProduct) return res.status(404).json({ message: 'New product not found' })
-      newProduct.quantity -= newQuantity
-      await newProduct.save()
+    const sale = await Sale.findByPk(req.params.id, { transaction: t })
+    if (!sale) {
+        await t.rollback()
+        return res.status(404).json({ message: 'Sale not found' })
     }
+
+    const { customerId, productId, supplierId, quantity } = req.body
+
+    // LOGIC: "Return" the old items to the shelf, then "Buy" the new items.
     
-    const detailedSale = await Sale.findByPk(sale.id, {
-      include: [
-        { model: Customer, attributes: ['name'] },
-        { model: Product, attributes: ['name'] }
-      ]
+    // 1. Return Old Stock
+    const oldPS = await ProductSupplier.findOne({
+      where: { productId: sale.productId, supplierId: sale.supplierId },
+      transaction: t
     })
-    res.json(detailedSale)
+    if (oldPS) {
+      oldPS.quantity += sale.quantity
+      await oldPS.save({ transaction: t })
+    }
+
+    const oldProduct = await Product.findByPk(sale.productId, { transaction: t })
+    oldProduct.quantity += sale.quantity
+    await oldProduct.save({ transaction: t })
+
+    // 2. Take New Stock
+    const newPS = await ProductSupplier.findOne({
+      where: { productId, supplierId },
+      transaction: t
+    })
+
+    if (!newPS || newPS.quantity < parseInt(quantity)) {
+        await t.rollback()
+        return res.status(400).json({ 
+            message: `Insufficient stock for update. Available: ${newPS ? newPS.quantity : 0}` 
+        })
+    }
+
+    newPS.quantity -= parseInt(quantity)
+    await newPS.save({ transaction: t })
+
+    const newProduct = await Product.findByPk(productId, { transaction: t })
+    newProduct.quantity -= parseInt(quantity)
+    await newProduct.save({ transaction: t })
+
+    // 3. Update Sale Record
+    await sale.update({ customerId, productId, supplierId, quantity }, { transaction: t })
+
+    await t.commit()
+
+    const updated = await Sale.findByPk(req.params.id, {
+        include: [{ model: Customer }, { model: Product }, { model: Supplier }]
+    })
+    res.json(updated)
+
   } catch (err) {
+    await t.rollback()
     res.status(400).json({ message: err.message })
   }
 })
 
 // DELETE
 router.delete('/:id', auth, async (req, res) => {
+  const t = await sequelize.transaction()
+
   try {
-    const sale = await Sale.findByPk(req.params.id)
-    if (!sale) return res.status(404).json({ message: 'Sale not found' })
+    const sale = await Sale.findByPk(req.params.id, { transaction: t })
+    if (!sale) {
+        await t.rollback()
+        return res.status(404).json({ message: 'Sale not found' })
+    }
+
+    // 1. Return Stock to ProductSupplier
+    const ps = await ProductSupplier.findOne({
+      where: { productId: sale.productId, supplierId: sale.supplierId },
+      transaction: t
+    })
     
-    const product = await Product.findByPk(sale.productId)
-    if (!product) return res.status(404).json({ message: 'Product not found' })
+    // If ps exists, add back. If it doesn't exist (maybe supplier deleted?), we skip or re-create.
+    // Assuming supplier exists:
+    if (ps) {
+      ps.quantity += sale.quantity
+      await ps.save({ transaction: t })
+    }
+
+    // 2. Return Stock to Global Product
+    const product = await Product.findByPk(sale.productId, { transaction: t })
     product.quantity += sale.quantity
-    await product.save()
-    
-    await sale.destroy()
+    await product.save({ transaction: t })
+
+    // 3. Delete Sale
+    await sale.destroy({ transaction: t })
+
+    await t.commit()
     res.json({ message: 'Sale deleted' })
+
   } catch (err) {
+    await t.rollback()
     res.status(500).json({ message: err.message })
   }
 })

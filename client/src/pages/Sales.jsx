@@ -14,20 +14,27 @@ import {
   Label,
   TextInput,
   Spinner,
+  Badge
 } from 'flowbite-react'
 import { HiPlus, HiPencil, HiTrash } from 'react-icons/hi'
 import axios from 'axios'
-import TopNavbar from '../components/TopNavBar' // Import the new component
-
+import TopNavbar from '../components/TopNavBar'
 
 export default function Sales() {
   const [sales, setSales] = useState([])
   const [customers, setCustomers] = useState([])
   const [products, setProducts] = useState([])
+  
+  // New state: Suppliers specific to the selected product
+  const [availableSuppliers, setAvailableSuppliers] = useState([]) 
+  
   const [loading, setLoading] = useState(true)
   const [openModal, setOpenModal] = useState(false)
   const [editingSale, setEditingSale] = useState(null)
-  const [formData, setFormData] = useState({ customerId: '', productId: '', quantity: '' })
+  
+  // Added supplierId to form data
+  const [formData, setFormData] = useState({ customerId: '', productId: '', supplierId: '', quantity: '' })
+  
   const API_URL = '/api/sales'
   const token = localStorage.getItem('token')
 
@@ -61,6 +68,24 @@ export default function Sales() {
     }
   }
 
+  // New helper: Fetch suppliers who have stock of a specific product
+  const fetchProductSuppliers = async (productId) => {
+    if (!productId) {
+        setAvailableSuppliers([])
+        return
+    }
+    try {
+      const res = await axios.get(`/api/products/${productId}/suppliers`, { 
+          headers: { Authorization: `Bearer ${token}` } 
+      })
+      setAvailableSuppliers(res.data)
+    } catch (err) {
+      console.error(err)
+      // Don't alert here, just clear list to avoid spamming errors if product has no suppliers
+      setAvailableSuppliers([])
+    }
+  }
+
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true)
@@ -70,14 +95,34 @@ export default function Sales() {
     fetchAll()
   }, [])
 
-  const openModalHandler = (sale = null) => {
+  const openModalHandler = async (sale = null) => {
     setEditingSale(sale)
-    setFormData(sale ? { customerId: sale.customerId.toString(), productId: sale.productId.toString(), quantity: sale.quantity.toString() } : { customerId: '', productId: '', quantity: '' })
+    if (sale) {
+      // If editing, we need to load the suppliers for the product on the existing sale
+      await fetchProductSuppliers(sale.productId)
+      setFormData({ 
+          customerId: sale.customerId.toString(), 
+          productId: sale.productId.toString(), 
+          supplierId: sale.supplierId.toString(),
+          quantity: sale.quantity.toString() 
+      })
+    } else {
+      setAvailableSuppliers([])
+      setFormData({ customerId: '', productId: '', supplierId: '', quantity: '' })
+    }
     setOpenModal(true)
   }
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    
+    // Special logic when Product changes
+    if (name === 'productId') {
+        setFormData({ ...formData, productId: value, supplierId: '' }) // Reset supplier when product changes
+        fetchProductSuppliers(value)
+    } else {
+        setFormData({ ...formData, [name]: value })
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -85,11 +130,14 @@ export default function Sales() {
     const data = {
       customerId: parseInt(formData.customerId),
       productId: parseInt(formData.productId),
+      supplierId: parseInt(formData.supplierId),
       quantity: parseInt(formData.quantity)
     }
-    if (isNaN(data.customerId) || isNaN(data.productId) || isNaN(data.quantity) || data.quantity <= 0) {
-      return alert('Please select valid customer, product, and positive quantity')
+
+    if (isNaN(data.customerId) || isNaN(data.productId) || isNaN(data.supplierId) || isNaN(data.quantity) || data.quantity <= 0) {
+      return alert('Please select all fields and enter a positive quantity')
     }
+
     try {
       if (editingSale) {
         const res = await axios.put(`${API_URL}/${editingSale.id}`, data, { headers: { Authorization: `Bearer ${token}` } })
@@ -105,7 +153,7 @@ export default function Sales() {
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this sale? This will adjust product quantity.')) return
+    if (!window.confirm('Delete this sale? This will return stock to the supplier.')) return
     try {
       await axios.delete(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${token}` } })
       setSales(sales.filter(p => p.id !== id))
@@ -115,139 +163,168 @@ export default function Sales() {
   }
 
   return (
-           <div className="min-h-screen bg-gray-50">
-               
-               {/* Use the new component */}
-               <TopNavbar />
-    <div className="p-6 lg:p-10">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Sales</h1>
-          <p className="text-gray-600 mt-1">Manage sales</p>
-        </div>
-        <Button color="purple" size="lg" onClick={() => openModalHandler()}>
-          <HiPlus className="mr-2 h-5 w-5" />
-          Add Sale
-        </Button>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <Spinner size="xl" />
+    <div className="min-h-screen bg-gray-50">
+      <TopNavbar />
+      <div className="p-6 lg:p-10">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Sales</h1>
+            <p className="text-gray-600 mt-1">Manage sales</p>
           </div>
-        ) : (
-          <Table hoverable>
-            <TableHead>
-              <TableRow>
-                <TableHeadCell className="bg-gray-50">ID</TableHeadCell>
-                <TableHeadCell className="bg-gray-50">Customer</TableHeadCell>
-                <TableHeadCell className="bg-gray-50">Product</TableHeadCell>
-                <TableHeadCell className="bg-gray-50">Quantity</TableHeadCell>
-                <TableHeadCell className="bg-gray-50 text-right">Actions</TableHeadCell>
-              </TableRow>
-            </TableHead>
-            <TableBody className="divide-y">
-              {sales.length === 0 ? (
+          <Button color="purple" size="lg" onClick={() => openModalHandler()}>
+            <HiPlus className="mr-2 h-5 w-5" />
+            Add Sale
+          </Button>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          {loading ? (
+            <div className="flex justify-center py-20">
+              <Spinner size="xl" />
+            </div>
+          ) : (
+            <Table hoverable>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-16 text-gray-500">
-                    <p className="text-xl">No sales yet</p>
-                    <Button color="purple" className="mt-4" onClick={() => openModalHandler()}>
-                      <HiPlus className="mr-2" /> Add Your First Sale
-                    </Button>
-                  </TableCell>
+                  <TableHeadCell className="bg-gray-50">ID</TableHeadCell>
+                  <TableHeadCell className="bg-gray-50">Customer</TableHeadCell>
+                  <TableHeadCell className="bg-gray-50">Product</TableHeadCell>
+                  <TableHeadCell className="bg-gray-50">From Supplier</TableHeadCell>
+                  <TableHeadCell className="bg-gray-50">Quantity</TableHeadCell>
+                  <TableHeadCell className="bg-gray-50 text-right">Actions</TableHeadCell>
                 </TableRow>
-              ) : (
-                sales.map((sale) => (
-                  <TableRow key={sale.id} className="hover:bg-gray-50 transition-colors">
-                    <TableCell className="font-mono text-sm text-gray-600">
-                      #{sale.id.toString().padStart(4, '0')}
-                    </TableCell>
-                    <TableCell className="font-medium text-gray-900">{sale.Customer.name}</TableCell>
-                    <TableCell>{sale.Product.name}</TableCell>
-                    <TableCell>{sale.quantity}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button size="xs" color="failure" onClick={() => openModalHandler(sale)}>
-                        <HiPencil className="h-4 w-4" />
-                      </Button>
-                      <Button size="xs" color="failure" onClick={() => handleDelete(sale.id)}>
-                        <HiTrash className="h-4 w-4" />
+              </TableHead>
+              <TableBody className="divide-y">
+                {sales.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-16 text-gray-500">
+                      <p className="text-xl">No sales yet</p>
+                      <Button color="purple" className="mt-4" onClick={() => openModalHandler()}>
+                        <HiPlus className="mr-2" /> Add Your First Sale
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </div>
+                ) : (
+                  sales.map((sale) => (
+                    <TableRow key={sale.id} className="hover:bg-gray-50 transition-colors">
+                      <TableCell className="font-mono text-sm text-gray-600">
+                        #{sale.id.toString().padStart(4, '0')}
+                      </TableCell>
+                      <TableCell className="font-medium text-gray-900">{sale.Customer?.name}</TableCell>
+                      <TableCell>{sale.Product?.name}</TableCell>
+                      <TableCell>
+                         <Badge color="info">{sale.Supplier?.name || 'Unknown'}</Badge>
+                      </TableCell>
+                      <TableCell>{sale.quantity}</TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button size="xs" color="failure" onClick={() => openModalHandler(sale)}>
+                          <HiPencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="xs" color="failure" onClick={() => handleDelete(sale.id)}>
+                          <HiTrash className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </div>
 
-      <Modal show={openModal} onClose={() => setOpenModal(false)} size="md">
-        <ModalHeader>{editingSale ? 'Edit Sale' : 'Add New Sale'}</ModalHeader>
-        <ModalBody>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <Label htmlFor="customerId">Customer</Label>
-              <select
-                id="customerId"
-                name="customerId"
-                value={formData.customerId}
-                onChange={handleChange}
-                required
-                className="mt-1 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-              >
-                <option value="">Select customer</option>
-                {customers.map(customer => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="productId">Product</Label>
-              <select
-                id="productId"
-                name="productId"
-                value={formData.productId}
-                onChange={handleChange}
-                required
-                className="mt-1 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-              >
-                <option value="">Select product</option>
-                {products.map(product => (
-                  <option key={product.id} value={product.id}>
-                    {product.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="quantity">Quantity</Label>
-              <TextInput
-                id="quantity"
-                name="quantity"
-                type="number"
-                min="1"
-                value={formData.quantity}
-                onChange={handleChange}
-                required
-                placeholder="e.g. 10"
-                className="mt-1"
-              />
-            </div>
-            <div className="flex justify-end gap-3 pt-4">
-              <Button color="gray" onClick={() => setOpenModal(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" color="purple">
-                {editingSale ? 'Update Sale' : 'Create Sale'}
-              </Button>
-            </div>
-          </form>
-        </ModalBody>
-      </Modal>
-    </div>
+        <Modal show={openModal} onClose={() => setOpenModal(false)} size="md">
+          <ModalHeader>{editingSale ? 'Edit Sale' : 'Add New Sale'}</ModalHeader>
+          <ModalBody>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              
+              {/* Customer Selection */}
+              <div>
+                <Label htmlFor="customerId">Customer</Label>
+                <select
+                  id="customerId"
+                  name="customerId"
+                  value={formData.customerId}
+                  onChange={handleChange}
+                  required
+                  className="mt-1 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                >
+                  <option value="">Select customer</option>
+                  {customers.map(customer => (
+                    <option key={customer.id} value={customer.id}>{customer.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Product Selection */}
+              <div>
+                <Label htmlFor="productId">Product</Label>
+                <select
+                  id="productId"
+                  name="productId"
+                  value={formData.productId}
+                  onChange={handleChange}
+                  required
+                  className="mt-1 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                >
+                  <option value="">Select product</option>
+                  {products.map(product => (
+                    <option key={product.id} value={product.id}>{product.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Supplier Selection (Dependent on Product) */}
+              <div>
+                <Label htmlFor="supplierId">
+                    Supplier Source 
+                    {formData.productId && availableSuppliers.length === 0 && <span className="text-red-500 text-xs ml-2">(No stock available)</span>}
+                </Label>
+                <select
+                  id="supplierId"
+                  name="supplierId"
+                  value={formData.supplierId}
+                  onChange={handleChange}
+                  required
+                  disabled={!formData.productId} // Disable until product is picked
+                  className="mt-1 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 disabled:bg-gray-200"
+                >
+                  <option value="">Select supplier batch</option>
+                  {availableSuppliers.map(ps => (
+                    <option key={ps.supplierId} value={ps.supplierId}>
+                      {ps.Supplier.name} (Available: {ps.quantity})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Quantity */}
+              <div>
+                <Label htmlFor="quantity">Quantity</Label>
+                <TextInput
+                  id="quantity"
+                  name="quantity"
+                  type="number"
+                  min="1"
+                  value={formData.quantity}
+                  onChange={handleChange}
+                  required
+                  placeholder="e.g. 10"
+                  className="mt-1"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button color="gray" onClick={() => setOpenModal(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" color="purple" disabled={availableSuppliers.length === 0}>
+                  {editingSale ? 'Update Sale' : 'Create Sale'}
+                </Button>
+              </div>
+            </form>
+          </ModalBody>
+        </Modal>
+      </div>
     </div>
   )
 }
